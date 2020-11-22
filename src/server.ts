@@ -1,16 +1,12 @@
-// http://tnickel.de/2020/03/29/2020-03-nodejs-http-server-using-the-net-module/
-// https://www.digitalocean.com/community/tutorials/how-to-create-a-web-server-in-node-js-with-the-http-module
-
 import net, {Server, Socket} from 'net';
 import {inspect} from 'util';
 
 import {errorHandler} from './utils';
-import {Methods} from './interface';
+import {HttpMessage, Methods} from './interface';
 import {deleteHandler, getHandler, postHandler, putHandler} from './router';
 
-const requestHandler = (socket: Socket, data: Buffer) => {
-  console.log(data.toString());
-  const [requestHeader, ...bodyContent] = data.toString().split('\r\n\r\n');
+const parseMessage = (message: Buffer): HttpMessage => {
+  const [requestHeader, ...bodyContent] = message.toString().split('\r\n\r\n');
 
   const [firstLine, ...otherLines] = requestHeader.split('\n');
   const [method, path, httpVersion] = firstLine.trim().split(' ');
@@ -26,9 +22,14 @@ const requestHandler = (socket: Socket, data: Buffer) => {
     path,
     httpVersion,
     headers,
+    body: bodyContent.join(''),
   };
   console.log(`Request handled: ${inspect(request)}`);
+  return request;
+};
 
+const requestHandler = (socket: Socket, data: Buffer) => {
+  const {path, method, body} = parseMessage(data);
   if (!path.startsWith('/users')) {
     socket.write('HTTP/1.1 404 Not Found\n\n');
     return socket.end();
@@ -39,13 +40,13 @@ const requestHandler = (socket: Socket, data: Buffer) => {
       getHandler(socket, path);
       break;
     case Methods.POST:
-      postHandler(socket, bodyContent.join(''));
+      postHandler(socket, body);
       break;
     case Methods.DELETE:
       deleteHandler(socket, path);
       break;
     case Methods.PUT:
-      putHandler(socket, bodyContent.join(''), path);
+      putHandler(socket, body, path);
       break;
     default:
       socket.write('HTTP/1.1 404 Not Found\n\n');

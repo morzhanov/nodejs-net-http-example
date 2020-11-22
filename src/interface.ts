@@ -4,3 +4,16 @@ export enum Methods {
   DELETE = 'DELETE',
   PUT = 'PUT',
 }
+
+export interface HttpMessage {
+  path: string;
+  method: string;
+  httpVersion: string;
+  headers: {[k: string]: string};
+  body: string;
+}
+
+export interface User {
+  id: string;
+  name: string;
+}
